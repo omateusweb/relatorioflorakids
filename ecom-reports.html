@@ -387,8 +387,14 @@ table.it td.rl{font-size:.8rem;color:var(--muted2);padding:.35rem .55rem;min-wid
 </div>
 <div id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SK='ecr4';
+// ─── SUPABASE CONFIG ───────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://kodoaetpgezdkecmexbm.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_w5RgkvbP_uIPWfhAJHxElQ_1AOHSv3M';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ──────────────────────────────────────────────────────────────────────────
+
 const B=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
 const D=s=>s?new Date(s+'T12:00').toLocaleDateString('pt-BR'):'—';
 const P=(n,d)=>d>0?((n/d)*100).toFixed(1)+'%':'—';
@@ -397,10 +403,17 @@ const TC=t=>({daily:'tb-d',weekly:'tb-w',monthly:'tb-m'}[t]||'');
 const N=(f,n)=>parseFloat(f[n]?.value)||0;
 const I=(f,n)=>parseInt(f[n]?.value)||0;
 let role=null,reps=[],ch={};
-function ld(){try{return JSON.parse(localStorage.getItem(SK)||'[]')}catch{return[]}}
-function ps(){localStorage.setItem(SK,JSON.stringify(reps))}
-function login(r){
-  role=r;reps=ld();
+
+async function fetchReps(){
+  const{data,error}=await sb.from('reports').select('*').order('ds',{ascending:false});
+  if(error){console.error(error);toast('Erro ao carregar dados','error');return[];}
+  return data||[];
+}
+
+async function login(r){
+  role=r;
+  toast('Carregando relatórios...','success');
+  reps=await fetchReps();
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
   document.querySelectorAll('.admin-only').forEach(e=>e.style.display=r==='admin'?'':'none');
@@ -458,11 +471,11 @@ function rd(){
   const mCols=['#ef4444','#f97316','#f59e0b','#00c896','#60a5fa','#a78bfa','#888'];
   document.getElementById('ret-bars').innerHTML=mVals.map((m,i)=>`<div class="prog-row"><span class="prog-label" title="${m.l}">${m.l}</span><div class="prog-track"><div class="prog-fill" style="width:${(m.v/mMax*100).toFixed(1)}%;background:${mCols[i]}"></div></div><span class="prog-val" style="color:${mCols[i]}">${m.v}</span></div>`).join('');
 }
-function save(){
+async function save(){
   const f=document.getElementById('rf');
   const period=f.period.value.trim(),type=f.type.value,ds=f.ds.value;
   if(!period||!type||!ds){toast('Preencha: Tipo, Período e Data início','error');return;}
-  const r={id:Date.now().toString(),type,period,ds,de:f.de.value,resp:f.resp.value.trim(),createdAt:new Date().toISOString(),
+  const r={type,period,ds,de:f.de.value||null,resp:f.resp.value.trim(),created_at:new Date().toISOString(),
     rg:N(f,'rg'),rd:N(f,'rd'),rl:N(f,'rl'),to:I(f,'to'),nc:I(f,'nc'),rc:I(f,'rc'),cr:N(f,'cr'),prg:N(f,'prg'),pro:I(f,'pro'),
     days:Array.from({length:7},(_,i)=>({o:I(f,'d'+i+'o'),g:N(f,'d'+i+'g'),d:N(f,'d'+i+'d'),n:N(f,'d'+i+'n')})),
     p1o:I(f,'p1o'),p1v:N(f,'p1v'),p1pp:N(f,'p1pp'),p1fp:N(f,'p1fp'),
@@ -489,7 +502,10 @@ function save(){
     m5:{n:I(f,'m5n'),v:N(f,'m5v'),a:I(f,'m5a'),d:I(f,'m5d')},m6:{n:I(f,'m6n'),v:N(f,'m6v'),a:I(f,'m6a'),d:I(f,'m6d')},
     m7:{n:I(f,'m7n'),v:N(f,'m7v'),a:I(f,'m7a'),d:I(f,'m7d')},
     notes:f.notes.value.trim()};
-  reps.unshift(r);ps();f.reset();toast('Relatório salvo! ✓','success');sw('history');
+  const{data,error}=await sb.from('reports').insert([r]).select().single();
+  if(error){toast('Erro ao salvar: '+error.message,'error');return;}
+  reps.unshift(data);
+  f.reset();toast('Relatório salvo! ✓','success');sw('history');
 }
 function rh(){
   const ft=document.getElementById('ft').value,fs=document.getElementById('fs').value;
@@ -570,9 +586,11 @@ function vr(id){
   document.getElementById('modal-overlay').style.display='flex';
 }
 function cm(){document.getElementById('modal-overlay').style.display='none';}
-function del(id){
+async function del(id){
   if(!confirm('Excluir este relatório?'))return;
-  reps=reps.filter(r=>r.id!==id);ps();rh();toast('Excluído','success');
+  const{error}=await sb.from('reports').delete().eq('id',id);
+  if(error){toast('Erro ao excluir','error');return;}
+  reps=reps.filter(r=>r.id!==id);rh();toast('Excluído','success');
 }
 function epdf(id){
   const r=reps.find(r=>r.id===id);if(!r)return;
