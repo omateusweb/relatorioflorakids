@@ -319,8 +319,15 @@ table.it td.rl{font-size:.8rem;color:var(--muted2);padding:.35rem .55rem;min-wid
 
     <!-- NOVO RELATÓRIO -->
     <div id="tab-new" class="tab-content">
-      <div class="page-header"><div><h1 class="page-title">Novo Relatório</h1><p class="page-sub">Preencha todas as seções do período</p></div></div>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" id="form-title">Novo Relatório</h1>
+          <p class="page-sub" id="form-sub">Preencha todas as seções do período</p>
+        </div>
+        <div id="edit-badge" style="display:none;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);border-radius:var(--rpill);padding:.3rem .9rem;font-size:.78rem;color:var(--purple);font-weight:600">✏️ Modo Edição</div>
+      </div>
       <form id="rf" onsubmit="event.preventDefault();save()">
+      <input type="hidden" name="edit_id" id="edit_id" value="">
 
         <div class="form-card">
           <div class="form-sec-title">📋 Identificação</div>
@@ -467,8 +474,8 @@ table.it td.rl{font-size:.8rem;color:var(--muted2);padding:.35rem .55rem;min-wid
         </div>
 
         <div style="display:flex;gap:.75rem;justify-content:flex-end;padding-bottom:2.5rem;flex-wrap:wrap">
-          <button type="button" class="btn btn-ghost" onclick="document.getElementById('rf').reset();document.getElementById('inp-rd-pct').value='';document.getElementById('inp-rl').value='';document.getElementById('pay-total-info').textContent=''">Limpar</button>
-          <button type="submit" class="btn btn-primary">💾 Salvar Relatório</button>
+          <button type="button" class="btn btn-ghost" onclick="resetForm()">Limpar</button>
+          <button type="submit" class="btn btn-primary" id="btn-save">💾 Salvar Relatório</button>
         </div>
       </form>
     </div>
@@ -747,12 +754,82 @@ function mkch(id,type,data,opts){
   ch[id]=new Chart(c,{type,data,options:{responsive:true,plugins:{legend:{labels:{color:'#888',font:{size:11},boxWidth:10}}},...opts}});
 }
 
-// ── SAVE ───────────────────────────────────────────────────
+// ── EDIT ───────────────────────────────────────────────────
+function resetForm(){
+  document.getElementById('rf').reset();
+  document.getElementById('edit_id').value='';
+  document.getElementById('inp-rd-pct').value='';
+  document.getElementById('inp-rl').value='';
+  document.getElementById('pay-total-info').textContent='';
+  document.getElementById('form-title').textContent='Novo Relatório';
+  document.getElementById('form-sub').textContent='Preencha todas as seções do período';
+  document.getElementById('edit-badge').style.display='none';
+  document.getElementById('btn-save').textContent='💾 Salvar Relatório';
+}
+
+function editRep(id){
+  const r=reps.find(r=>r.id===id);if(!r)return;
+  resetForm();
+  const f=document.getElementById('rf');
+  // Preenche campos de identificação
+  document.getElementById('edit_id').value=id;
+  f.type.value=r.type||'';
+  f.period.value=r.period||'';
+  f.ds.value=r.ds||'';
+  f.de.value=r.de||'';
+  f.resp.value=r.resp||'';
+  // Resumo executivo
+  const setV=(n,v)=>{const el=f[n];if(el)el.value=v||''};
+  setV('rg',r.rg);setV('rd',r.rd);setV('rl',r.rl);
+  setV('to',r.to);setV('nc',r.nc);setV('rc',r.rc);setV('cr',r.cr);
+  setV('prg',r.prg);setV('pro',r.pro);
+  // Calcula % fornecedor
+  if(r.rg>0&&r.rd>=0){
+    document.getElementById('inp-rd-pct').value=parseFloat((r.rd/r.rg*100).toFixed(1));
+  }
+  // Dias
+  (r.days||[]).forEach((d,i)=>{setV('d'+i+'o',d.o);setV('d'+i+'g',d.g);setV('d'+i+'d',d.d);setV('d'+i+'n',d.n);});
+  // Pagamentos
+  [1,2,3,4,5,6,7,8].forEach(i=>{
+    setV('p'+i+'o',r['p'+i+'o']);setV('p'+i+'v',r['p'+i+'v']);
+    setV('p'+i+'pp',r['p'+i+'pp']);setV('p'+i+'fp',r['p'+i+'fp']);
+  });
+  // Envios
+  ['s1','s2','s3','s4','s5','s6','s7'].forEach(k=>{
+    const s=r[k]||{};setV(k+'n',s.n);setV(k+'v',s.v);setV(k+'d',s.d);setV(k+'t',s.t);
+  });
+  // Status envio
+  [1,2,3,4,5,6,7].forEach(i=>setV('st'+i,r['st'+i]));
+  // Carrinhos
+  setV('ct',r.ct);setV('ca',r.ca);setV('cv',r.cv);setV('crr',r.crr);setV('cav',r.cav);
+  ['c1','c2','c3','c4','c5','c6'].forEach(k=>{
+    const c=r[k]||{};setV(k+'s',c.s);setV(k+'c',c.c);setV(k+'r',c.r);setV(k+'v',c.v);
+  });
+  // Devoluções
+  [1,2,3,4,5].forEach(i=>setV('rd'+i,r['rd'+i]));
+  [1,2,3,4].forEach(i=>setV('rf'+i,r['rf'+i]));
+  ['m1','m2','m3','m4','m5','m6','m7'].forEach(k=>{
+    const m=r[k]||{};setV(k+'n',m.n);setV(k+'v',m.v);setV(k+'a',m.a);setV(k+'d',m.d);
+  });
+  setV('notes',r.notes);
+  calcPayPct();
+  // UI modo edição
+  document.getElementById('form-title').textContent='Editar Relatório';
+  document.getElementById('form-sub').textContent=`Editando: ${r.period}`;
+  document.getElementById('edit-badge').style.display='block';
+  document.getElementById('btn-save').textContent='💾 Salvar Alterações';
+  sw('new');
+  window.scrollTo({top:0,behavior:'smooth'});
+  toast('Relatório carregado para edição ✓','success');
+}
+
+// ── SAVE (INSERT ou UPDATE) ────────────────────────────────
 async function save(){
   const f=document.getElementById('rf');
   const period=f.period.value.trim(),type=f.type.value,ds=f.ds.value;
   if(!period||!type||!ds){toast('Preencha: Tipo, Período e Data início','error');return;}
-  const r={type,period,ds,de:f.de.value||null,resp:f.resp.value.trim(),created_at:new Date().toISOString(),
+  const editId=document.getElementById('edit_id').value;
+  const r={type,period,ds,de:f.de.value||null,resp:f.resp.value.trim(),
     rg:N(f,'rg'),rd:N(f,'rd'),rl:N(f,'rl'),to:I(f,'to'),nc:I(f,'nc'),rc:I(f,'rc'),cr:N(f,'cr'),prg:N(f,'prg'),pro:I(f,'pro'),
     days:Array.from({length:7},(_,i)=>({o:I(f,'d'+i+'o'),g:N(f,'d'+i+'g'),d:N(f,'d'+i+'d'),n:N(f,'d'+i+'n')})),
     p1o:I(f,'p1o'),p1v:N(f,'p1v'),p1pp:N(f,'p1pp'),p1fp:N(f,'p1fp'),
@@ -779,11 +856,27 @@ async function save(){
     m5:{n:I(f,'m5n'),v:N(f,'m5v'),a:I(f,'m5a'),d:I(f,'m5d')},m6:{n:I(f,'m6n'),v:N(f,'m6v'),a:I(f,'m6a'),d:I(f,'m6d')},
     m7:{n:I(f,'m7n'),v:N(f,'m7v'),a:I(f,'m7a'),d:I(f,'m7d')},
     notes:f.notes.value.trim()};
-  const{data,error}=await sb.from('reports').insert([r]).select().single();
-  if(error){toast('Erro ao salvar: '+error.message,'error');return;}
-  reps.unshift(data);
-  populateYearFilter();
-  f.reset();toast('Relatório salvo! ✓','success');sw('history');
+
+  if(editId){
+    // UPDATE
+    const{data,error}=await sb.from('reports').update(r).eq('id',editId).select().single();
+    if(error){toast('Erro ao atualizar: '+error.message,'error');return;}
+    const idx=reps.findIndex(x=>x.id===parseInt(editId));
+    if(idx>=0)reps[idx]=data;
+    resetForm();
+    toast('Relatório atualizado! ✓','success');
+    sw('history');
+  } else {
+    // INSERT
+    r.created_at=new Date().toISOString();
+    const{data,error}=await sb.from('reports').insert([r]).select().single();
+    if(error){toast('Erro ao salvar: '+error.message,'error');return;}
+    reps.unshift(data);
+    populateYearFilter();
+    resetForm();
+    toast('Relatório salvo! ✓','success');
+    sw('history');
+  }
 }
 
 // ── HISTORY ────────────────────────────────────────────────
@@ -811,7 +904,7 @@ function rh(){
         <button class="btn btn-ghost btn-sm" onclick="vr(${r.id})">👁 Ver</button>
         <button class="btn btn-ghost btn-sm" onclick="epdf(${r.id})">📄 PDF</button>
         <button class="btn btn-wa btn-sm" onclick="sendWa(${r.id})">📲 WA</button>
-        ${role==='admin'?`<button class="btn btn-red btn-sm" onclick="del(${r.id})">✕</button>`:''}
+        ${role==='admin'?`<button class="btn btn-green btn-sm" onclick="editRep(${r.id})">✏️ Editar</button><button class="btn btn-red btn-sm" onclick="del(${r.id})">✕</button>`:''}
       </div>
     </div>`).join('');
 }
