@@ -289,6 +289,9 @@ table.it td.rl{font-size:.8rem;color:var(--muted2);padding:.35rem .55rem;min-wid
 
       <div id="dash-empty" class="empty"><div class="empty-icon">📊</div><div class="empty-title">Nenhum dado ainda</div><p style="font-size:.83rem">Adicione o primeiro relatório para ver o dashboard.</p></div>
       <div id="dash-body" style="display:none">
+        <div id="dash-no-filter-results" style="display:none;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:var(--r);padding:.85rem 1.2rem;margin-bottom:1rem;font-size:.85rem;color:var(--warn)">
+          ⚠️ Nenhum relatório encontrado para o filtro selecionado. Os dados abaixo estão zerados.
+        </div>
         <div class="kpi-grid">
           <div class="kpi"><div class="kpi-label">Fat. Bruto Total</div><div class="kpi-value c-g" id="kpi-bruto">R$0</div></div>
           <div class="kpi"><div class="kpi-label">Fat. Líquido Total</div><div class="kpi-value c-g" id="kpi-liq">R$0</div></div>
@@ -608,20 +611,31 @@ function populateYearFilter(){
 // ── DASH FILTER ────────────────────────────────────────────
 function applyDashFilter(){
   const type=document.getElementById('df-type').value;
-  const year=document.getElementById('df-year').value;
-  const month=document.getElementById('df-month').value;
+  const year=parseInt(document.getElementById('df-year').value)||0;
+  const month=parseInt(document.getElementById('df-month').value)||0;
   const from=document.getElementById('df-from').value;
   const to=document.getElementById('df-to').value;
+  const hasFilter=type||year||month||from||to;
+  if(!hasFilter){rd(null,false);return;}
   dashFiltered=reps.filter(r=>{
-    const d=new Date(r.ds+'T12:00');
+    // usa ds como data de início e de como data fim do período
+    const dStart=new Date(r.ds+'T12:00');
+    const dEnd=r.de?new Date(r.de+'T12:00'):dStart;
     if(type&&r.type!==type)return false;
-    if(year&&d.getFullYear()!=year)return false;
-    if(month&&(d.getMonth()+1)!=month)return false;
+    if(year&&dStart.getFullYear()!==year&&dEnd.getFullYear()!==year)return false;
+    if(month){
+      // bate se qualquer dia do período cai no mês selecionado
+      const sameYear=!year||(dStart.getFullYear()===year||dEnd.getFullYear()===year);
+      const mStart=dStart.getMonth()+1;
+      const mEnd=dEnd.getMonth()+1;
+      const inRange=month>=mStart&&month<=mEnd;
+      if(!sameYear||!inRange)return false;
+    }
     if(from&&r.ds<from)return false;
-    if(to&&r.ds>to)return false;
+    if(to&&(r.de||r.ds)>to)return false;
     return true;
   });
-  rd(dashFiltered);
+  rd(dashFiltered,true);
 }
 function clearDashFilter(){
   document.getElementById('df-type').value='';
@@ -630,25 +644,31 @@ function clearDashFilter(){
   document.getElementById('df-from').value='';
   document.getElementById('df-to').value='';
   dashFiltered=[];
-  rd();
+  rd(null,false);
 }
 
 // ── DASHBOARD ──────────────────────────────────────────────
-function rd(filtered){
+function rd(filtered,filterActive){
   const data=filtered||reps;
-  const has=data.length>0;
-  document.getElementById('dash-empty').style.display=has?'none':'block';
-  document.getElementById('dash-body').style.display=has?'block':'none';
+  const totalReps=reps.length;
+  // Sempre mostra o corpo. Só esconde se não há nenhum relatório cadastrado ainda.
+  const neverHadData=totalReps===0;
+  document.getElementById('dash-empty').style.display=neverHadData?'block':'none';
+  document.getElementById('dash-body').style.display=neverHadData?'none':'block';
+  if(neverHadData)return;
 
   // Period label
   const lbl=document.getElementById('dash-period-label');
-  if(filtered&&filtered.length<reps.length){
+  if(filterActive&&filtered!==null){
     lbl.textContent=`Mostrando ${filtered.length} relatório${filtered.length!==1?'s':''} filtrado${filtered.length!==1?'s':''}`;
   } else {
     lbl.textContent='Visão consolidada de todos os períodos';
   }
 
-  if(!has)return;
+  // Aviso inline quando filtro não encontra resultados (mas há dados no sistema)
+  const noResults=data.length===0;
+  const inlineWarn=document.getElementById('dash-no-filter-results');
+  if(inlineWarn)inlineWarn.style.display=noResults?'block':'none';
 
   const tBruto=data.reduce((s,r)=>s+(r.rg||0),0);
   const tLiq=data.reduce((s,r)=>s+(r.rl||0),0);
@@ -668,11 +688,16 @@ function rd(filtered){
   document.getElementById('kpi-ret').textContent=tRetR;
   document.getElementById('kpi-rec').textContent=P(tRecv,tAban);
 
-  const best=data.reduce((m,r)=>(r.rg||0)>(m.rg||0)?r:m,data[0]);
-  document.getElementById('best-p').textContent=best.period;
-  document.getElementById('best-m').textContent=B(best.rg)+' · '+(best.to||0)+' pedidos · '+TL(best.type);
+  const best=data.length>0?data.reduce((m,r)=>(r.rg||0)>(m.rg||0)?r:m,data[0]):null;
+  document.getElementById('best-p').textContent=best?best.period:'—';
+  document.getElementById('best-m').textContent=best?B(best.rg)+' · '+(best.to||0)+' pedidos · '+TL(best.type):'Sem dados no período';
 
   const sorted=[...data].sort((a,b)=>new Date(a.ds)-new Date(b.ds)).slice(-10);
+  if(sorted.length===0){
+    ['ch-rev','ch-pay','ch-cart'].forEach(id=>{if(ch[id]){ch[id].destroy();delete ch[id];}});
+    document.getElementById('ret-bars').innerHTML='<p style="font-size:.8rem;color:var(--muted);padding:.5rem 0">Sem dados no período selecionado.</p>';
+    return;
+  }
 
   mkch('ch-rev','bar',{
     labels:sorted.map(r=>r.period.length>14?r.period.slice(0,14)+'…':r.period),
