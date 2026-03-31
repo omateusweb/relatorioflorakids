@@ -46,7 +46,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .role-badge.viewer{background:rgba(136,136,136,.12);color:var(--muted2)}
 .logout-btn{display:flex;align-items:center;gap:.5rem;color:var(--muted);font-size:.83rem;cursor:pointer;padding:.4rem .75rem;border-radius:var(--rsm);border:none;background:none;width:100%;font-family:var(--font);transition:all .15s}
 .logout-btn:hover{background:rgba(239,68,68,.1);color:var(--danger)}
-.main{margin-left:var(--sb);padding:2rem 2.25rem;min-height:100vh;transition:margin .2s}
+.main{margin-left:var(--sb);padding:2rem 2.25rem;min-height:100vh;transition:margin .2s;padding-top:2.5rem}
 
 /* TOPBAR mobile */
 .topbar{display:none;position:fixed;top:0;left:0;right:0;height:56px;background:var(--surface);border-bottom:1px solid var(--border);z-index:150;align-items:center;padding:0 1rem;gap:1rem}
@@ -333,9 +333,10 @@ table.it td.rl{font-size:.8rem;color:var(--muted2);padding:.35rem .55rem;min-wid
         <div class="form-card">
           <div class="form-sec-title">💰 Resumo Executivo</div>
           <div class="form-grid">
-            <div class="fg"><label>Fat. Bruto (R$)</label><input type="number" name="rg" step="0.01" min="0" placeholder="0,00"></div>
-            <div class="fg"><label>Custo Fornecedor (R$)</label><input type="number" name="rd" step="0.01" min="0" placeholder="0,00"></div>
-            <div class="fg"><label>Fat. Líquido (R$)</label><input type="number" name="rl" step="0.01" min="0" placeholder="0,00"></div>
+            <div class="fg"><label>Fat. Bruto (R$)</label><input type="number" name="rg" id="inp-rg" step="0.01" min="0" placeholder="0,00" oninput="calcForn()"></div>
+            <div class="fg"><label>% Custo Fornecedor</label><input type="number" name="rd_pct" id="inp-rd-pct" step="0.1" min="0" max="100" placeholder="Ex: 50" oninput="calcForn()"></div>
+            <div class="fg"><label>Custo Fornecedor (R$) — calculado</label><input type="number" name="rd" id="inp-rd" step="0.01" min="0" placeholder="0,00" oninput="calcFornFromVal()"></div>
+            <div class="fg"><label>Fat. Líquido (R$) — calculado</label><input type="number" name="rl" id="inp-rl" step="0.01" min="0" placeholder="0,00" readonly style="background:var(--surface3);cursor:default;opacity:.8"></div>
             <div class="fg"><label>Total de Pedidos</label><input type="number" name="to" min="0" placeholder="0"></div>
             <div class="fg"><label>Novos Clientes</label><input type="number" name="nc" min="0" placeholder="0"></div>
             <div class="fg"><label>Clientes Recorrentes</label><input type="number" name="rc" min="0" placeholder="0"></div>
@@ -365,21 +366,13 @@ table.it td.rl{font-size:.8rem;color:var(--muted2);padding:.35rem .55rem;min-wid
 
         <div class="form-card">
           <div class="form-sec-title">💳 Formas de Pagamento</div>
-          <div style="overflow-x:auto">
-          <table class="it">
-            <thead><tr><th>Forma de Pagamento</th><th>Nº Pedidos</th><th>Valor Total (R$)</th><th>% Pedidos</th><th>% Faturamento</th></tr></thead>
-            <tbody>
-              <tr><td class="rl">PIX</td><td><input type="number" name="p1o" min="0" placeholder="0"></td><td><input type="number" name="p1v" step="0.01" placeholder="0,00"></td><td><input type="number" name="p1pp" step="0.1" placeholder="0"></td><td><input type="number" name="p1fp" step="0.1" placeholder="0"></td></tr>
-              <tr><td class="rl">Cartão de Crédito 1x</td><td><input type="number" name="p2o" min="0" placeholder="0"></td><td><input type="number" name="p2v" step="0.01" placeholder="0,00"></td><td><input type="number" name="p2pp" step="0.1" placeholder="0"></td><td><input type="number" name="p2fp" step="0.1" placeholder="0"></td></tr>
-              <tr><td class="rl">Cartão de Crédito 2–6x</td><td><input type="number" name="p3o" min="0" placeholder="0"></td><td><input type="number" name="p3v" step="0.01" placeholder="0,00"></td><td><input type="number" name="p3pp" step="0.1" placeholder="0"></td><td><input type="number" name="p3fp" step="0.1" placeholder="0"></td></tr>
-              <tr><td class="rl">Cartão de Crédito 7–12x</td><td><input type="number" name="p4o" min="0" placeholder="0"></td><td><input type="number" name="p4v" step="0.01" placeholder="0,00"></td><td><input type="number" name="p4pp" step="0.1" placeholder="0"></td><td><input type="number" name="p4fp" step="0.1" placeholder="0"></td></tr>
-              <tr><td class="rl">Cartão de Débito</td><td><input type="number" name="p5o" min="0" placeholder="0"></td><td><input type="number" name="p5v" step="0.01" placeholder="0,00"></td><td><input type="number" name="p5pp" step="0.1" placeholder="0"></td><td><input type="number" name="p5fp" step="0.1" placeholder="0"></td></tr>
-              <tr><td class="rl">Boleto Bancário</td><td><input type="number" name="p6o" min="0" placeholder="0"></td><td><input type="number" name="p6v" step="0.01" placeholder="0,00"></td><td><input type="number" name="p6pp" step="0.1" placeholder="0"></td><td><input type="number" name="p6fp" step="0.1" placeholder="0"></td></tr>
-              <tr><td class="rl">Carteira Digital (PayPal/MP)</td><td><input type="number" name="p7o" min="0" placeholder="0"></td><td><input type="number" name="p7v" step="0.01" placeholder="0,00"></td><td><input type="number" name="p7pp" step="0.1" placeholder="0"></td><td><input type="number" name="p7fp" step="0.1" placeholder="0"></td></tr>
-              <tr><td class="rl">Outros</td><td><input type="number" name="p8o" min="0" placeholder="0"></td><td><input type="number" name="p8v" step="0.01" placeholder="0,00"></td><td><input type="number" name="p8pp" step="0.1" placeholder="0"></td><td><input type="number" name="p8fp" step="0.1" placeholder="0"></td></tr>
-            </tbody>
-          </table>
+          <div class="form-grid-3">
+            <div class="fg"><label>💚 PIX — Nº de pedidos</label><input type="number" name="p1o" min="0" placeholder="0" oninput="calcPayPct()"></div>
+            <div class="fg"><label>💳 Cartão de Crédito — Nº de pedidos</label><input type="number" name="p2o" min="0" placeholder="0" oninput="calcPayPct()"></div>
+            <div class="fg"><label>🏦 Cartão de Débito — Nº de pedidos</label><input type="number" name="p5o" min="0" placeholder="0" oninput="calcPayPct()"></div>
+            <div class="fg"><label>📄 Boleto / Espécie — Nº de pedidos</label><input type="number" name="p6o" min="0" placeholder="0" oninput="calcPayPct()"></div>
           </div>
+          <p id="pay-total-info" style="font-size:.75rem;color:var(--muted2);margin-top:.65rem"></p>
         </div>
 
         <div class="form-card">
@@ -471,7 +464,7 @@ table.it td.rl{font-size:.8rem;color:var(--muted2);padding:.35rem .55rem;min-wid
         </div>
 
         <div style="display:flex;gap:.75rem;justify-content:flex-end;padding-bottom:2.5rem;flex-wrap:wrap">
-          <button type="button" class="btn btn-ghost" onclick="document.getElementById('rf').reset()">Limpar</button>
+          <button type="button" class="btn btn-ghost" onclick="document.getElementById('rf').reset();document.getElementById('inp-rd-pct').value='';document.getElementById('inp-rl').value='';document.getElementById('pay-total-info').textContent=''">Limpar</button>
           <button type="submit" class="btn btn-primary">💾 Salvar Relatório</button>
         </div>
       </form>
@@ -689,12 +682,17 @@ function rd(filtered){
     ]
   },{plugins:{legend:{display:true,labels:{color:'#777',font:{size:10},boxWidth:8}}},scales:{x:{ticks:{color:'#555',font:{size:9}},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#555',font:{size:9},callback:v=>'R$'+(v>=1000?(v/1000).toFixed(0)+'k':v)},grid:{color:'rgba(255,255,255,.04)'}}}});
 
-  // GRÁFICO PAGAMENTO — soma os valores reais por forma
-  const payTotals=[1,2,3,4,5,6,7,8].map(i=>data.reduce((s,r)=>s+(r['p'+i+'v']||0),0));
+  // GRÁFICO PAGAMENTO — soma os pedidos das 4 formas simplificadas
+  const payTotals=[
+    data.reduce((s,r)=>s+(r.p1o||0),0), // PIX
+    data.reduce((s,r)=>s+(r.p2o||0)+(r.p3o||0)+(r.p4o||0),0), // Crédito (soma CC1x+2-6x+7-12x)
+    data.reduce((s,r)=>s+(r.p5o||0),0), // Débito
+    data.reduce((s,r)=>s+(r.p6o||0)+(r.p7o||0)+(r.p8o||0),0), // Boleto/Outros
+  ];
   const paySum=payTotals.reduce((a,b)=>a+b,0)||1;
   const payPct=payTotals.map(v=>parseFloat(((v/paySum)*100).toFixed(1)));
-  const payLabels=['PIX','CC 1x','CC 2-6x','CC 7-12x','Débito','Boleto','Carteiras','Outros'];
-  const payColors=['#00c896','#378ADD','#60a5fa','#7c3aed','#a78bfa','#f59e0b','#f97316','#666'];
+  const payLabels=['PIX','Cartão Crédito','Débito','Boleto/Espécie'];
+  const payColors=['#00c896','#60a5fa','#a78bfa','#f59e0b'];
   const payNonZero=payPct.map((v,i)=>({v,l:payLabels[i],c:payColors[i]})).filter(x=>x.v>0);
 
   mkch('ch-pay','doughnut',{
@@ -1081,7 +1079,40 @@ async function importNuvemshop(){
   }
 }
 
-// ── TOAST ──────────────────────────────────────────────────
+// ── CÁLCULO FORNECEDOR ────────────────────────────────────
+function calcForn(){
+  const rg=parseFloat(document.getElementById('inp-rg')?.value)||0;
+  const pct=parseFloat(document.getElementById('inp-rd-pct')?.value)||0;
+  const rd=parseFloat((rg*pct/100).toFixed(2));
+  const rl=parseFloat((rg-rd).toFixed(2));
+  if(document.getElementById('inp-rd'))document.getElementById('inp-rd').value=rd||'';
+  if(document.getElementById('inp-rl'))document.getElementById('inp-rl').value=rl||'';
+}
+function calcFornFromVal(){
+  // Se usuário digitar o valor direto no campo R$, recalcula %  e líquido
+  const rg=parseFloat(document.getElementById('inp-rg')?.value)||0;
+  const rd=parseFloat(document.getElementById('inp-rd')?.value)||0;
+  if(rg>0){
+    const pct=parseFloat((rd/rg*100).toFixed(1));
+    if(document.getElementById('inp-rd-pct'))document.getElementById('inp-rd-pct').value=pct||'';
+  }
+  const rl=parseFloat((rg-rd).toFixed(2));
+  if(document.getElementById('inp-rl'))document.getElementById('inp-rl').value=rl||'';
+}
+
+// ── CÁLCULO FORMAS DE PAGAMENTO ───────────────────────────
+function calcPayPct(){
+  const f=document.getElementById('rf');
+  const p1=parseInt(f.p1o?.value)||0;
+  const p2=parseInt(f.p2o?.value)||0;
+  const p5=parseInt(f.p5o?.value)||0;
+  const p6=parseInt(f.p6o?.value)||0;
+  const total=p1+p2+p5+p6;
+  const info=document.getElementById('pay-total-info');
+  if(info)info.textContent=total>0?`Total registrado: ${total} pedidos (PIX: ${p1} · Crédito: ${p2} · Débito: ${p5} · Boleto/Espécie: ${p6})`:'';
+}
+
+
 function toast(msg,type='success'){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className='toast '+type+' show';
