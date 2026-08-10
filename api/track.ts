@@ -3,7 +3,7 @@ import {allowOrigin,db,json} from './_shared.js';
 const text=(v:unknown,max=500)=>typeof v==='string'?v.slice(0,max):null;
 export default async function handler(req:any,res:any){
  if(req.method==='OPTIONS'){allowOrigin(req,res);return res.status(204).end()}
- if(req.method==='GET'){try{const {error}=await db().from('tracking_sessions').select('id',{head:true,count:'exact'}).limit(1);return error?json(res,503,{ready:false,error:'database_not_ready'}):json(res,200,{ready:true})}catch{return json(res,503,{ready:false,error:'server_not_configured'})}}
+ if(req.method==='GET'){try{const client=db();const {error}=await client.from('tracking_sessions').select('id',{head:true,count:'exact'}).limit(1);if(error)return json(res,503,{ready:false,error:'database_not_ready'});const test=await client.from('tracking_sessions').select('id').eq('utm_campaign','validacao').limit(1).maybeSingle();return json(res,200,{ready:true,testCaptured:Boolean(test.data)})}catch{return json(res,503,{ready:false,error:'server_not_configured'})}}
  if(req.method!=='POST')return json(res,405,{error:'method_not_allowed'}); if(!allowOrigin(req,res))return json(res,403,{error:'origin_not_allowed'});
  try{const b=req.body||{};const visitorKey=text(b.visitor_id,100),sessionKey=text(b.session_id,100);if(!visitorKey||!sessionKey)return json(res,400,{error:'visitor_id_and_session_id_required'});const client=db();
   const {data:visitor,error:ve}=await client.from('tracking_visitors').upsert({visitor_key:visitorKey,last_seen_at:new Date().toISOString()},{onConflict:'visitor_key'}).select('id').single();if(ve)throw ve;
