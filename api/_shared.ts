@@ -1,0 +1,7 @@
+import {createClient} from '@supabase/supabase-js';
+import {createHmac,timingSafeEqual} from 'node:crypto';
+export const db=()=>{const url=process.env.SUPABASE_URL;const key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!url||!key)throw new Error('Supabase server credentials are not configured');return createClient(url,key,{auth:{persistSession:false}})};
+export const json=(res:any,status:number,body:unknown)=>res.status(status).setHeader('content-type','application/json').send(JSON.stringify(body));
+export const safeEqual=(a:string,b:string)=>{const aa=Buffer.from(a);const bb=Buffer.from(b);return aa.length===bb.length&&timingSafeEqual(aa,bb)};
+export const validSignature=(raw:string,signature:string|undefined)=>{const secret=process.env.NUVEMSHOP_CLIENT_SECRET;if(!secret||!signature)return false;const hex=createHmac('sha256',secret).update(raw).digest('hex');const b64=createHmac('sha256',secret).update(raw).digest('base64');return safeEqual(signature,hex)||safeEqual(signature,b64)};
+export const allowOrigin=(req:any,res:any)=>{const allowed=(process.env.TRACKING_ALLOWED_ORIGINS||'').split(',').map(x=>x.trim()).filter(Boolean);const origin=req.headers.origin;if(origin&&allowed.includes(origin)){res.setHeader('access-control-allow-origin',origin);res.setHeader('vary','Origin')}res.setHeader('access-control-allow-methods','POST,OPTIONS');res.setHeader('access-control-allow-headers','content-type');return !origin||allowed.includes(origin)};
