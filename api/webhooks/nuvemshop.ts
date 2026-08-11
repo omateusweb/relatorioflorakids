@@ -35,7 +35,8 @@ export default async function handler(req:any,res:any){
   const sessionKey=extras.ecom_session_id||noteSession||payload.ecom_session_id;
   let session=null;
   if(sessionKey){const result=await client.from('tracking_sessions').select('id,visitor_id').eq('session_key',sessionKey).maybeSingle();session=result.data}
-  await client.from('order_attributions').upsert({order_id:o.id,session_id:session?.id||null,visitor_id:session?.visitor_id||null,confidence:session?'exact_session':'unattributed',details:{session_key:sessionKey||null}},{onConflict:'order_id'});
+  if(!session&&payload.number){const purchase=await client.from('tracking_events').select('session_id,visitor_id').eq('event_name','purchase').contains('metadata',{order_number:String(payload.number)}).order('occurred_at',{ascending:false}).limit(1).maybeSingle();session=purchase.data}
+  await client.from('order_attributions').upsert({order_id:o.id,session_id:session?.session_id||session?.id||null,visitor_id:session?.visitor_id||null,confidence:session?'exact_session':'unattributed',details:{session_key:sessionKey||null,match:sessionKey?'order_extra':session?'purchase_event':'none'}},{onConflict:'order_id'});
   await client.from('nuvemshop_webhook_events').update({status:'processed',processed_at:new Date().toISOString()}).eq('id',evt.id);
   return json(res,200,{ok:true});
  }catch(e:any){console.error(e);await client.from('nuvemshop_webhook_events').update({status:'failed',error:String(e?.message||e).slice(0,1000)}).eq('id',evt.id);return json(res,500,{error:'processing_failed'})}
