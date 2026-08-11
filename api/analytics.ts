@@ -1,4 +1,4 @@
-import {db,json} from './_shared.js';
+import {db,json,requireAdmin} from './_shared.js';
 
 const amount=(value:unknown)=>Number(value)||0;
 const clean=(value:unknown,fallback='—')=>String(value||'').trim()||fallback;
@@ -43,6 +43,7 @@ function dimension(name:string,sessions:any[],sales:any[],totalRevenue:number){
 
 export default async function handler(req:any,res:any){
  if(req.method!=='GET')return json(res,405,{error:'method_not_allowed'});
+ if(!await requireAdmin(req,res))return;
  const from=String(req.query?.from||'').slice(0,10);
  const to=String(req.query?.to||'').slice(0,10);
  const store=String(process.env.NUVEMSHOP_STORE_ID||'');

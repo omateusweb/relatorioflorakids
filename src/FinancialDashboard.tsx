@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import {Bar,BarChart,CartesianGrid,Cell,Legend,Pie,PieChart,ResponsiveContainer,Tooltip,XAxis,YAxis} from 'recharts';
 import {CalendarDays,ChevronDown,PackageOpen,Percent,RefreshCw,ShoppingBag,Trophy} from 'lucide-react';
+import {apiFetch} from './lib/api';
 
 type DashboardData={range:{from:string;to:string};metrics:{gross:number;orders:number;shipping:number;ticket:number;refunded:number};daily:{date:string;gross:number;orders:number;shipping:number}[];payments:{name:string;value:number;orders:number}[];syncedAt:string};
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -12,7 +13,7 @@ function Kpi({label,value,tone='mint',children}:{label:string;value:string;tone?
 export function FinancialDashboard(){
  const initial=range('month');const [preset,setPreset]=useState('month'),[from,setFrom]=useState(initial.from),[to,setTo]=useState(initial.to),[data,setData]=useState<DashboardData|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [supplierPct,setSupplierPct]=useState(()=>Number(localStorage.getItem('supplier_cost_pct')||70));
- const load=async()=>{setLoading(true);setError('');try{const r=await fetch(`/api/dashboard?from=${from}&to=${to}`);const body=await r.json();if(!r.ok)throw new Error(body.error||'sync_failed');setData(body)}catch{setError('Não foi possível sincronizar os pedidos da Nuvemshop.')}finally{setLoading(false)}};
+ const load=async()=>{setLoading(true);setError('');try{const r=await apiFetch(`/api/dashboard?from=${from}&to=${to}`);const body=await r.json();if(!r.ok)throw new Error(body.error||'sync_failed');setData(body)}catch{setError('Não foi possível sincronizar os pedidos da Nuvemshop.')}finally{setLoading(false)}};
  useEffect(()=>{load()},[from,to]);
  const choose=(value:string)=>{setPreset(value);const r=range(value);setFrom(r.from);setTo(r.to)};
  const setPct=(value:number)=>{const safe=Math.min(100,Math.max(0,value||0));setSupplierPct(safe);localStorage.setItem('supplier_cost_pct',String(safe))};

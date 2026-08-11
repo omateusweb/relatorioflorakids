@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useMemo,useState} from 'react';
 import {Activity,BarChart3,CalendarDays,ChevronDown,Download,PackageOpen,Radio,RefreshCw,Search,ShoppingBag} from 'lucide-react';
+import {apiFetch} from './lib/api';
 
 type DimensionRow={name:string;sessions:number;orders:number;revenue:number;conversion:number;share:number};
 type Sale={id:string;date:string;order:string;channel:string;campaign:string;creative:string;revenue:number;status:string;attributed:boolean;hasUtm:boolean};
@@ -16,7 +17,7 @@ const percentage=(value:number)=>`${value.toFixed(1).replace('.',',')}%`;
 function useAnalytics(){
  const initial=initialRange();
  const [from,setFrom]=useState(initial.from),[to,setTo]=useState(initial.to),[data,setData]=useState<Analytics|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
- const load=useCallback(async()=>{setLoading(true);setError('');try{const response=await fetch(`/api/analytics?from=${from}&to=${to}`);const body=await response.json();if(!response.ok)throw new Error(body.error);setData(body)}catch{setError('Não foi possível carregar os dados reais de tracking.')}finally{setLoading(false)}},[from,to]);
+ const load=useCallback(async()=>{setLoading(true);setError('');try{const response=await apiFetch(`/api/analytics?from=${from}&to=${to}`);const body=await response.json();if(!response.ok)throw new Error(body.error);setData(body)}catch{setError('Não foi possível carregar os dados reais de tracking.')}finally{setLoading(false)}},[from,to]);
  useEffect(()=>{load();const timer=window.setInterval(load,60000);return()=>window.clearInterval(timer)},[load]);
  const preset=(days:number)=>{const end=new Date(),start=new Date(end);start.setDate(end.getDate()-(days-1));setFrom(iso(start));setTo(iso(end))};
  return{from,to,setFrom,setTo,data,loading,error,load,preset};
