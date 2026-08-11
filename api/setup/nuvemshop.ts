@@ -16,8 +16,8 @@ export default async function handler(req:any,res:any){
  const url='https://relatorioflorakids.vercel.app/api/webhooks/nuvemshop';
  const existing=list.find(x=>x.event==='order/paid'&&x.url===url);
  if(existing){
-  const updated=await fetch(`${base}/${existing.id}`,{method:'PUT',headers,body:JSON.stringify({url,headers:{'X-EcomReports-Webhook-Secret':secret}})});
-  if(!updated.ok)return json(res,502,{error:'webhook_update_failed',providerStatus:updated.status});
+  const updated=await fetch(`${base}/${existing.id}`,{method:'PUT',headers,body:JSON.stringify({event:'order/paid',url,headers:{'X-EcomReports-Webhook-Secret':secret}})});
+  if(!updated.ok){const providerError=(await updated.text()).slice(0,500);return json(res,502,{error:'webhook_update_failed',providerStatus:updated.status,providerError})}
   return json(res,200,{ok:true,created:false,updated:true,event:'order/paid',webhookId:existing.id});
  }
  const created=await fetch(base,{method:'POST',headers,body:JSON.stringify({event:'order/paid',url,headers:{'X-EcomReports-Webhook-Secret':secret}})});
