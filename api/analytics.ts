@@ -4,6 +4,14 @@ const amount=(value:unknown)=>Number(value)||0;
 const clean=(value:unknown,fallback='—')=>String(value||'').trim()||fallback;
 const day=(value:unknown)=>String(value||'').slice(0,10);
 
+function orderDate(order:any){
+ const candidates=[order?.paid_at,order?.created_at,order?.completed_at?.date,order?.updated_at];
+ for(const value of candidates){
+  if(typeof value==='string'&&value.trim()&&!Number.isNaN(Date.parse(value)))return value;
+ }
+ return '';
+}
+
 async function paged(makeQuery:(from:number,to:number)=>PromiseLike<any>){
  const rows:any[]=[];
  for(let from=0;from<10000;from+=1000){
@@ -93,7 +101,7 @@ export default async function handler(req:any,res:any){
    const session=sessionId?sessionById.get(sessionId):null;
    const attributed=Boolean(session);
    const hasUtm=Boolean(session&&(session.utm_source||session.utm_medium||session.utm_campaign||session.fbclid||session.gclid||session.ttclid));
-   return {id:String(order.id),date:order.paid_at||order.completed_at||order.created_at,order:`#${order.number||order.id}`,channel:attributed?channelFor(session):'Não identificado',campaign:attributed?clean(session.utm_campaign,'Sem campanha'):'Sem campanha',creative:attributed?clean(session.utm_content,'Sem criativo'):'Sem criativo',revenue:amount(order.total_paid_by_customer??order.total),status:hasUtm?'Atribuída':attributed?'Sessão direta':'Sem sessão',attributed,hasUtm};
+   return {id:String(order.id),date:orderDate(order),order:`#${order.number||order.id}`,channel:attributed?channelFor(session):'Não identificado',campaign:attributed?clean(session.utm_campaign,'Sem campanha'):'Sem campanha',creative:attributed?clean(session.utm_content,'Sem criativo'):'Sem criativo',revenue:amount(order.total_paid_by_customer??order.total),status:hasUtm?'Atribuída':attributed?'Sessão direta':'Sem sessão',attributed,hasUtm};
   }).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
 
   const sessionRows=sessions.map(session=>{

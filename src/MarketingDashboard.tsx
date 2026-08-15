@@ -11,7 +11,7 @@ type Analytics={range:{from:string;to:string};summary:{attributedRevenue:number;
 const money=(value:number)=>value.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const iso=(date:Date)=>{const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');return `${y}-${m}-${d}`};
 const initialRange=()=>{const to=new Date(),from=new Date(to);from.setDate(to.getDate()-29);return{from:iso(from),to:iso(to)}};
-const shortDate=(value:string)=>new Date(value).toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}).replace('.','');
+const shortDate=(value:string)=>{const parsed=new Date(value);return Number.isNaN(parsed.getTime())?'Data indisponível':parsed.toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}).replace('.','')};
 const percentage=(value:number)=>`${value.toFixed(1).replace('.',',')}%`;
 
 function useAnalytics(){
