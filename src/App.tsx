@@ -1,13 +1,14 @@
 import {useMemo,useState} from 'react';
 import {NavLink,Route,Routes,useLocation} from 'react-router-dom';
-import {Activity,BarChart3,Clock3,LayoutDashboard,LogOut,Menu,MousePointerClick,Radio,Settings,ShoppingBag,Tag,Users,X} from 'lucide-react';
+import {Activity,BarChart3,Clock3,LayoutDashboard,LogOut,Menu,MousePointerClick,Package,Radio,Settings,ShoppingBag,Tag,Users,X} from 'lucide-react';
 import {FinancialDashboard} from './FinancialDashboard';
 import {DimensionPage,MarketingOverview,TrackedSales,TrackingDiagnostics,TrackingSessions} from './MarketingDashboard';
 import {AuthGate} from './Auth';
 import {supabase} from './lib/supabase';
+import {ProductsPage} from './ProductsPage';
 
 const groups=[
- {label:'Principal',items:[['/','Dashboard',LayoutDashboard],['/historico','Histórico',Clock3]]},
+ {label:'Principal',items:[['/','Dashboard',LayoutDashboard],['/produtos','Produtos',Package],['/historico','Histórico',Clock3]]},
  {label:'Marketing',items:[['/marketing','Visão geral',BarChart3],['/marketing/canais','Canais',Users],['/marketing/campanhas','Campanhas',Tag],['/marketing/criativos','Criativos',MousePointerClick],['/marketing/vendas','Vendas rastreadas',ShoppingBag]]},
  {label:'Tracking',items:[['/tracking/sessoes','Sessões',Radio],['/tracking/diagnostico','Diagnóstico',Activity]]}
 ];
@@ -25,6 +26,7 @@ function Shell({email}:{email:string}){
   <main><div className="mobile-head"><button onClick={()=>setOpen(true)} aria-label="Abrir menu"><Menu/></button><b>{title as string}</b><img src="/flora-kids-mark.png" alt=""/></div><div className="content"><Routes>
    <Route path="/" element={<FinancialDashboard/>}/>
    <Route path="/historico" element={<FinancialDashboard/>}/>
+   <Route path="/produtos" element={<ProductsPage/>}/>
    <Route path="/marketing" element={<MarketingOverview/>}/>
    <Route path="/marketing/canais" element={<DimensionPage kind="channels"/>}/>
    <Route path="/marketing/campanhas" element={<DimensionPage kind="campaigns"/>}/>

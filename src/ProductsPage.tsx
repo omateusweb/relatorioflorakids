@@ -1,0 +1,21 @@
+import {useCallback,useEffect,useMemo,useState} from 'react';
+import {Package,RefreshCw,Search,TrendingUp} from 'lucide-react';
+import {apiFetch} from './lib/api';
+
+type Product={id:string;name:string;price:number;cost:number;profit:number;margin:number;published:boolean;variants:number};
+type ProductsResponse={products:Product[];summary:{products:number;inventoryValue:number;averageMargin:number};syncedAt:string;costStorageReady:boolean};
+const money=(value:number)=>value.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+export function ProductsPage(){
+ const [data,setData]=useState<ProductsResponse|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[search,setSearch]=useState(''),[saving,setSaving]=useState('');
+ const load=useCallback(async()=>{setLoading(true);setError('');try{const response=await apiFetch('/api/products');const body=await response.json();if(!response.ok)throw new Error(body.error);setData(body)}catch{setError('Não foi possível sincronizar os produtos da loja.')}finally{setLoading(false)}},[]);
+ useEffect(()=>{load()},[load]);
+ const rows=useMemo(()=>data?.products.filter(product=>product.name.toLowerCase().includes(search.toLowerCase()))||[],[data,search]);
+ const updateCost=async(product:Product,value:string)=>{
+  const cost=Math.max(0,Number(value.replace(',','.'))||0);
+  setData(current=>current?{...current,products:current.products.map(row=>row.id===product.id?{...row,cost,profit:row.price-cost,margin:row.price?(row.price-cost)/row.price*100:0}:row)}:current);
+  setSaving(product.id);
+  try{const response=await apiFetch('/api/products',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({productId:product.id,cost})});if(!response.ok)throw new Error();}catch{setError('O custo não foi salvo. Atualize a página e tente novamente.')}finally{setSaving('')}
+ };
+ return <><header className="page-title"><div><span>Catálogo</span><h1>Produtos</h1><p>{data?`${data.products.length} produtos sincronizados da Nuvemshop`:'Custos, preços e lucratividade do catálogo.'}</p></div><button className="refresh" onClick={load} disabled={loading}><RefreshCw className={loading?'spin':''}/> Atualizar</button></header>{error&&<div className="finance-warning">{error}</div>}{!data&&loading?<div className="panel empty"><RefreshCw className="spin"/><h3>Buscando produtos…</h3></div>:data&&<><section className="metrics product-metrics"><article className="metric"><div className="metric-icon green"><Package/></div><span>Produtos cadastrados</span><strong>{data.summary.products}</strong><small>Catálogo completo da loja</small></article><article className="metric"><div className="metric-icon purple"><TrendingUp/></div><span>Margem média</span><strong>{data.summary.averageMargin.toFixed(1).replace('.',',')}%</strong><small>Com base nos custos preenchidos</small></article></section><section className="panel sales products-panel"><div className="panel-head"><div><h2>Custos e lucratividade</h2><small>Preencha o custo; o lucro é calculado automaticamente.</small></div><label className="table-search"><Search/><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Buscar produto…"/></label></div><div className="table-wrap"><table className="products-table"><thead><tr><th>Nome do produto</th><th>Preço de custo</th><th>Preço de venda</th><th>Lucro</th><th>Margem</th></tr></thead><tbody>{rows.map(product=><tr key={product.id}><td><b>{product.name}</b>{product.variants>1&&<small>{product.variants} variações · menor preço</small>}</td><td><label className="cost-input"><span>R$</span><input defaultValue={product.cost.toFixed(2).replace('.',',')} inputMode="decimal" onBlur={event=>updateCost(product,event.target.value)} aria-label={`Custo de ${product.name}`}/>{saving===product.id&&<RefreshCw className="spin"/>}</label></td><td><b>{money(product.price)}</b></td><td><b className={product.profit>=0?'profit-positive':'profit-negative'}>{money(product.profit)}</b></td><td><em className={product.margin>=30?'success':product.margin>=0?'margin-warning':'margin-danger'}>{product.margin.toFixed(1).replace('.',',')}%</em></td></tr>)}</tbody></table>{rows.length===0&&<div className="empty"><Package/><h3>Nenhum produto encontrado</h3></div>}</div></section></>}</>;
+}
